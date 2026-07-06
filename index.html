@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passagem de Plantão - CETREL</title>
+    <!-- Tailwind CSS para Estilização Responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js para geração do PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        /* Estilos base para melhorar a aparência em dispositivos móveis */
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .form-section { background: white; padding: 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .section-title { font-size: 1.125rem; font-weight: bold; color: #1f2937; margin-bottom: 1rem; border-bottom: 2px solid #ef4444; padding-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem;}
+        label { display: block; font-size: 0.875rem; font-weight: 600; color: #4b5563; margin-bottom: 0.25rem; margin-top: 0.75rem;}
+        input[type="text"], input[type="number"], input[type="date"], select, textarea {
+            width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem; margin-bottom: 0.5rem;
+            transition: border-color 0.15s ease-in-out;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #ef4444; ring: 2px #ef4444; }
+        
+        /* Estilos para o PDF e Preview */
+        #pdf-preview-container { background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; color: #000; font-family: 'Arial', sans-serif;}
+        
+        /* Cabeçalho Corporativo */
+        .pdf-header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+        .pdf-logos { font-size: 1.5rem; font-weight: 900; color: #004c97; font-style: italic; letter-spacing: -0.5px;}
+        .pdf-logos-solvi { font-size: 1.4rem; font-weight: bold; color: #16a34a; letter-spacing: -1px;}
+        .pdf-title-center { text-align: center; flex-grow: 1; }
+        
+        .report-topic { font-weight: bold; margin-top: 1.2rem; margin-bottom: 0.5rem; font-size: 1rem; text-transform: uppercase; border-bottom: 1px solid #ccc; padding-bottom: 2px;}
+        .report-list { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; font-size: 0.9rem;}
+        
+        /* Tabelas Profissionais */
+        .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.85rem; }
+        .pdf-table th, .pdf-table td { border: 1px solid #666; padding: 6px; text-align: left; vertical-align: middle; }
+        .pdf-table th { background-color: #f9fafb; font-weight: bold; width: 25%; }
+        
+        /* Grid de 3 colunas para Fotos */
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 1rem; page-break-inside: avoid;}
+        .photo-item { text-align: center; border: 1px solid #ccc; padding: 5px; background: #fafafa;}
+        .photo-item img { width: 100%; height: 180px; object-fit: cover; }
+        .photo-caption { font-size: 0.75rem; margin-top: 5px; color: #333;}
+
+        /* Esconder no print */
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- CABEÇALHO DO APP -->
+    <header class="bg-red-600 text-white p-4 sticky top-0 z-50 shadow-md">
+        <h1 class="text-xl font-bold text-center">🚨 Sistema de Plantão Cetrel</h1>
+    </header>
+
+    <main class="container mx-auto p-4 max-w-3xl">
+        
+        <!-- ==================== TELA DO FORMULÁRIO ==================== -->
+        <div id="form-view">
+            <form id="plantao-form">
+                
+                <!-- Dados Gerais -->
+                <div class="form-section">
+                    <h2 class="section-title">🕒 Período e Base</h2>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label>Data de Assunção</label>
+                            <input type="date" id="dataInicio" required>
+                        </div>
+                        <div>
+                            <label>Data de Passagem</label>
+                            <input type="date" id="dataFim" required>
+                        </div>
+                    </div>
+
+                    <label>Base</label>
+                    <select id="base" required>
+                        <option value="">Selecione a Base...</option>
+                        <option value="Estação Miranga">Estação Miranga</option>
+                        <option value="Estação Cassarogongo">Estação Cassarogongo</option>
+                        <option value="Estação São Roque">Estação São Roque</option>
+                        <option value="Equipe de Sondas">Equipe de Sondas</option>
+                    </select>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label>Equipe Saindo (Entrega)</label>
+                            <select id="equipeSai" required>
+                                <option value="">Selecione...</option>
+                                <option value="ALFA (A)">ALFA (A)</option>
+                                <option value="BRAVO (B)">BRAVO (B)</option>
+                                <option value="CHARLIE (C)">CHARLIE (C)</option>
+                                <option value="DELTA (D)">DELTA (D)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Equipe Entrando (Assume)</label>
+                            <select id="equipeEntra" required>
+                                <option value="">Selecione...</option>
+                                <option value="ALFA (A)">ALFA (A)</option>
+                                <option value="BRAVO (B)">BRAVO (B)</option>
+                                <option value="CHARLIE (C)">CHARLIE (C)</option>
+                                <option value="DELTA (D)">DELTA (D)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guarnição -->
+                <div class="form-section">
+                    <h2 class="section-title">👨‍🚒 Guarnição</h2>
+                    <label>Condutor</label>
+                    <input type="text" id="condutor" placeholder="Nome do condutor" required>
+                    
+                    <label>Equipagem</label>
+                    <input type="text" id="equipagem" placeholder="Nome da equipagem" required>
+                </div>
+
+                <!-- Estações -->
+                <div class="form-section">
+                    <h2 class="section-title">📍 Relato das Estações / Atividades</h2>
+                    <div id="estacoes-container">
+                        <!-- Estações dinâmicas aparecerão aqui -->
+                    </div>
+                    <button type="button" onclick="adicionarEstacao()" class="mt-2 w-full bg-blue-100 text-blue-700 font-semibold py-2 rounded border border-blue-300 hover:bg-blue-200 active:bg-blue-300">
+                        + Adicionar Estação / Local
+                    </button>
+                </div>
+
+                <!-- Pendências Gerais -->
+                <div class="form-section">
+                    <h2 class="section-title">📋 Pendências a Serem Realizadas</h2>
+                    <textarea id="pendenciasGerais" rows="3" placeholder="Liste as pendências gerais..."></textarea>
+                </div>
+
+                <!-- Montana -->
+                <div class="form-section">
+                    <h2 class="section-title">🚙 Status da Montana (Deslocamento)</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label>Odômetro Entrada</label>
+                            <input type="number" id="montanaKmEntrada" placeholder="KM">
+                        </div>
+                        <div>
+                            <label>Odômetro Saída</label>
+                            <input type="number" id="montanaKmSaida" placeholder="KM">
+                        </div>
+                    </div>
+                    <label>Status e Avarias</label>
+                    <textarea id="montanaStatus" rows="2" placeholder="Tudo ok, ou descreva as avarias..."></textarea>
+                </div>
+
+                <!-- VCI -->
+                <div class="form-section">
+                    <h2 class="section-title">🚒 Status da Viatura (VCI)</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label>Odômetro Entrada</label>
+                            <input type="number" id="vciKmEntrada" placeholder="KM" required>
+                        </div>
+                        <div>
+                            <label>Odômetro Saída</label>
+                            <input type="number" id="vciKmSaida" placeholder="KM">
+                        </div>
+                    </div>
+                    
+                    <label>Avarias</label>
+                    <textarea id="vciAvarias" rows="2" placeholder="Descreva as avarias encontradas..."></textarea>
+                    
+                    <label>Reparos Efetuados</label>
+                    <textarea id="vciReparos" rows="2" placeholder="Descreva reparos realizados no plantão..."></textarea>
+                    
+                    <label>Pendências da Viatura</label>
+                    <textarea id="vciPendencias" rows="2" placeholder="Pendências para a próxima equipe..."></textarea>
+                </div>
+
+                <!-- Observações -->
+                <div class="form-section">
+                    <h2 class="section-title">📌 Observações Gerais</h2>
+                    <textarea id="obsGerais" rows="3" placeholder="Qualquer outra observação relevante..."></textarea>
+                </div>
+
+                <!-- Fotos -->
+                <div class="form-section">
+                    <h2 class="section-title">📸 Registro Fotográfico (Máx 6)</h2>
+                    <p class="text-sm text-gray-500 mb-4">Anexe fotos e preencha a legenda. (As fotos serão redimensionadas no PDF).</p>
+                    
+                    <div id="fotos-container" class="space-y-4">
+                        <!-- Gerado via JS para 6 fotos -->
+                    </div>
+                </div>
+
+                <!-- Botão de Ação Primária -->
+                <button type="submit" class="w-full bg-red-600 text-white font-bold text-lg py-4 rounded-lg shadow-lg hover:bg-red-700 active:bg-red-800 transition-colors">
+                    Gerar Relatório de Passagem
+                </button>
+            </form>
+        </div>
+
+
+        <!-- ==================== TELA DE PREVIEW / PDF ==================== -->
+        <div id="preview-view" class="hidden">
+            
+            <!-- Barra de ferramentas superior -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-4 no-print">
+                <button onclick="voltarFormulario()" class="flex-1 bg-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-gray-600 flex items-center justify-center gap-2">
+                    <span>⬅️</span> Voltar para Correção
+                </button>
+                <button onclick="gerarPDF()" class="flex-1 bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-green-700 flex items-center justify-center gap-2">
+                    <span>📄</span> Emitir PDF Definitivo
+                </button>
+            </div>
+
+            <!-- Container que será transformado em PDF -->
+            <div id="pdf-preview-container">
+                
+                <!-- CABEÇALHO PADRÃO CETREL / SOLVÍ -->
+                <div class="pdf-header-container">
+                    <div class="pdf-logos">Cetrel</div>
+                    <div class="pdf-title-center">
+                        <div style="font-weight: bold; font-size: 1.1rem;">RELATÓRIO DE PASSAGEM DE PLANTÃO</div>
+                        <div style="font-size: 0.95rem;">Equipe Emergência | Petroreconcavo</div>
+                        <div style="font-size: 0.95rem; font-weight: bold;" id="out-estacao-header">Base</div>
+                    </div>
+                    <div class="pdf-logos-solvi">solví</div>
+                </div>
+
+                <!-- DADOS GERAIS -->
+                <div style="font-size: 0.9rem; margin-bottom: 15px; border: 1px solid #ccc; padding: 10px; background: #f9fafb;">
+                    <strong>Período:</strong> <span id="out-periodo"></span> (Escala 7x7)<br>
+                    <strong>Equipe saindo:</strong> <span id="out-equipeSai"></span> &nbsp;|&nbsp; 
+                    <strong>Equipe assumindo:</strong> <span id="out-equipeEntra"></span><br>
+                    <strong>Guarnição:</strong> Condutor: <span id="out-condutor" style="font-weight:bold;"></span> | Equipagem: <span id="out-equipagem" style="font-weight:bold;"></span>
+                </div>
+
+                <!-- PENDÊNCIAS (Movido para cima conforme modelo) -->
+                <div id="container-pendencias" style="display: none;">
+                    <div class="report-topic">📋 PENDÊNCIAS A SEREM REALIZADAS</div>
+                    <div id="out-pendenciasGerais" style="padding-left: 0.5rem; white-space: pre-wrap; font-size: 0.9rem; margin-bottom: 1rem;"></div>
+                </div>
+
+                <!-- ESTAÇÕES -->
+                <div class="report-topic">📍 STATUS DAS ESTAÇÕES / ATIVIDADES</div>
+                <ul class="report-list" id="out-estacoes">
+                    <!-- Preenchido via JS -->
+                </ul>
+
+                <!-- MONTANA -->
+                <div class="report-topic">🚙 STATUS DA MONTANA (VEÍCULO DE DESLOCAMENTO)</div>
+                <table class="pdf-table">
+                    <tr>
+                        <th>Odômetro Entrada (KM)</th>
+                        <td id="out-montanaKmEntradaTable"></td>
+                        <th>Odômetro Saída (KM)</th>
+                        <td id="out-montanaKmSaidaTable"></td>
+                    </tr>
+                    <tr>
+                        <th>Status / Avarias</th>
+                        <td colspan="3" id="out-montanaStatusTable"></td>
+                    </tr>
+                </table>
+
+                <!-- VCI -->
+                <div class="report-topic">🚒 VIATURA DE COMBATE A INCÊNDIO (VCI)</div>
+                <table class="pdf-table">
+                    <tr>
+                        <th>Odômetro Entrada (KM)</th>
+                        <td id="out-vciKmEntradaTable"></td>
+                        <th>Odômetro Saída (KM)</th>
+                        <td id="out-vciKmSaidaTable"></td>
+                    </tr>
+                    <tr>
+                        <th>Avarias</th>
+                        <td colspan="3" id="out-vciAvariasTable"></td>
+                    </tr>
+                    <tr>
+                        <th>Reparos Realizados</th>
+                        <td colspan="3" id="out-vciReparosTable"></td>
+                    </tr>
+                    <tr>
+                        <th>Pendências</th>
+                        <td colspan="3" id="out-vciPendenciasTable"></td>
+                    </tr>
+                </table>
+
+                <!-- OBSERVAÇÕES -->
+                <div id="container-obsGerais" style="display: none;">
+                    <div class="report-topic">📌 OBSERVAÇÕES GERAIS</div>
+                    <ul class="report-list" id="out-obsGerais">
+                        <!-- Preenchido via JS -->
+                    </ul>
+                </div>
+
+                <!-- FOTOS -->
+                <div class="report-topic" style="page-break-before: auto;">📸 REGISTRO FOTOGRÁFICO</div>
+                <div id="out-fotos-container" class="photo-grid">
+                    <!-- Preenchido via JS (Grade 3x3) -->
+                </div>
+                
+                <div style="text-align: center; margin-top: 1.5rem; font-weight: bold; font-size: 0.9rem;">
+                    Bom serviço à equipe <span id="out-equipeEntraSaudacao"></span>! 👊
+                </div>
+
+                <!-- RODAPÉ DE GERAÇÃO AUTOMÁTICA -->
+                <div style="margin-top: 20px; font-size: 0.75rem; text-align: center; color: #555; border-top: 1px solid #ccc; padding-top: 5px;" id="pdf-footer-timestamp">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+            
+            <div class="mt-4 text-center text-sm text-gray-500 no-print">
+                Ao emitir o PDF, aguarde alguns segundos enquanto o arquivo é gerado.
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let stationCount = 0;
+        let photosData = {}; // Armazena as imagens em base64
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            adicionarEstacao(); // Adiciona a primeira estação vazia por padrão
+            gerarCamposDeFotos();
+        });
+
+        // Formata data YYYY-MM-DD para DD/MM/YYYY
+        function formatarData(dataISO) {
+            if (!dataISO) return '';
+            const [ano, mes, dia] = dataISO.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        // --- Lógica de Estações Dinâmicas ---
+        function adicionarEstacao() {
+            stationCount++;
+            const container = document.getElementById('estacoes-container');
+            const id = `estacao-${stationCount}`;
+            
+            const div = document.createElement('div');
+            div.className = 'bg-gray-50 p-3 rounded border border-gray-200 mb-3 relative';
+            div.id = id;
+            
+            div.innerHTML = `
+                ${stationCount > 1 ? `<button type="button" onclick="removerEstacao('${id}')" class="absolute top-2 right-2 text-red-500 font-bold text-xl px-2">&times;</button>` : ''}
+                <label>Nome do Local / Estação</label>
+                <input type="text" class="estacao-nome" placeholder="Ex: Búfalo, São Pedro, EMED..." required>
+                <label>Status / Relato da Atividade</label>
+                <textarea class="estacao-status" rows="2" placeholder="Ex: Tudo OK ✅ ou descreva a situação..." required></textarea>
+            `;
+            container.appendChild(div);
+        }
+
+        function removerEstacao(id) {
+            const el = document.getElementById(id);
+            if(el) el.remove();
+        }
+
+        // --- Lógica de Fotos ---
+        function gerarCamposDeFotos() {
+            const container = document.getElementById('fotos-container');
+            for(let i = 1; i <= 6; i++) {
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 p-3 rounded border border-gray-200 flex flex-col gap-2';
+                div.innerHTML = `
+                    <label class="!mt-0">Foto ${i}</label>
+                    <input type="file" accept="image/*" id="foto-input-${i}" class="text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" onchange="lerImagem(this, ${i})">
+                    <input type="text" id="foto-legenda-${i}" placeholder="Legenda da Foto ${i}" class="!mb-0 hidden">
+                    <img id="foto-preview-${i}" class="hidden w-full max-h-40 object-contain mt-2 rounded border">
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function lerImagem(input, index) {
+            const legendaInput = document.getElementById(`foto-legenda-${index}`);
+            const previewImg = document.getElementById(`foto-preview-${index}`);
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photosData[index] = e.target.result;
+                    previewImg.src = e.target.result;
+                    previewImg.classList.remove('hidden');
+                    legendaInput.classList.remove('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                delete photosData[index];
+                previewImg.src = '';
+                previewImg.classList.add('hidden');
+                legendaInput.classList.add('hidden');
+                legendaInput.value = '';
+            }
+        }
+
+        // --- Controle de Telas (Workflow) ---
+        document.getElementById('plantao-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            preencherPreview();
+            document.getElementById('form-view').classList.add('hidden');
+            document.getElementById('preview-view').classList.remove('hidden');
+            window.scrollTo(0,0);
+        });
+
+        function voltarFormulario() {
+            document.getElementById('preview-view').classList.add('hidden');
+            document.getElementById('form-view').classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        // --- Preenchimento dos dados no Layout do PDF ---
+        function preencherPreview() {
+            // Gerais
+            const inicio = formatarData(document.getElementById('dataInicio').value);
+            const fim = formatarData(document.getElementById('dataFim').value);
+            document.getElementById('out-periodo').innerText = `${inicio} a ${fim}`;
+            const baseNome = document.getElementById('base').value;
+            document.getElementById('out-estacao-header').innerText = baseNome;
+            
+            const eqSai = document.getElementById('equipeSai').value;
+            const eqEntra = document.getElementById('equipeEntra').value;
+            document.getElementById('out-equipeSai').innerText = eqSai;
+            document.getElementById('out-equipeEntra').innerText = eqEntra;
+            document.getElementById('out-equipeEntraSaudacao').innerText = eqEntra.split(' ')[0];
+
+            // Guarnição
+            document.getElementById('out-condutor').innerText = document.getElementById('condutor').value;
+            document.getElementById('out-equipagem').innerText = document.getElementById('equipagem').value;
+
+            // Estações
+            const ulEstacoes = document.getElementById('out-estacoes');
+            ulEstacoes.innerHTML = ''; // limpa
+            const nomes = document.querySelectorAll('.estacao-nome');
+            const status = document.querySelectorAll('.estacao-status');
+            
+            nomes.forEach((nomeInput, index) => {
+                if(nomeInput.value) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${nomeInput.value}:</strong> ${status[index].value}`;
+                    ulEstacoes.appendChild(li);
+                }
+            });
+
+            // Pendências
+            const pend = document.getElementById('pendenciasGerais').value.trim();
+            if(pend) {
+                document.getElementById('container-pendencias').style.display = 'block';
+                // Adiciona um bullet (•) para cada linha para ficar igual ao modelo se desejado, 
+                // ou apenas exibe como texto pré-formatado (já faz isso via CSS white-space: pre-wrap)
+                document.getElementById('out-pendenciasGerais').innerText = pend;
+            } else {
+                document.getElementById('container-pendencias').style.display = 'none';
+            }
+
+            // Montana (Tabela)
+            document.getElementById('out-montanaKmEntradaTable').innerText = document.getElementById('montanaKmEntrada').value || '-';
+            document.getElementById('out-montanaKmSaidaTable').innerText = document.getElementById('montanaKmSaida').value || '-';
+            document.getElementById('out-montanaStatusTable').innerText = document.getElementById('montanaStatus').value || 'Não reportado';
+
+            // VCI (Tabela)
+            document.getElementById('out-vciKmEntradaTable').innerText = document.getElementById('vciKmEntrada').value || '-';
+            document.getElementById('out-vciKmSaidaTable').innerText = document.getElementById('vciKmSaida').value || '-';
+            document.getElementById('out-vciAvariasTable').innerText = document.getElementById('vciAvarias').value || 'Nenhuma';
+            document.getElementById('out-vciReparosTable').innerText = document.getElementById('vciReparos').value || 'Nenhum';
+            document.getElementById('out-vciPendenciasTable').innerText = document.getElementById('vciPendencias').value || 'Nenhuma';
+
+            // Observações Gerais
+            const obsText = document.getElementById('obsGerais').value.trim();
+            const containerObs = document.getElementById('container-obsGerais');
+            const ulObs = document.getElementById('out-obsGerais');
+            ulObs.innerHTML = '';
+            
+            if(obsText) {
+                containerObs.style.display = 'block';
+                const linhas = obsText.split('\n');
+                linhas.forEach(linha => {
+                    if(linha.trim() !== '') {
+                        const li = document.createElement('li');
+                        li.innerText = linha.trim();
+                        ulObs.appendChild(li);
+                    }
+                });
+            } else {
+                containerObs.style.display = 'none';
+            }
+
+            // Fotos
+            const outFotos = document.getElementById('out-fotos-container');
+            outFotos.innerHTML = ''; // limpa
+            
+            for(let i = 1; i <= 6; i++) {
+                if(photosData[i]) {
+                    const legenda = document.getElementById(`foto-legenda-${i}`).value || `Foto ${i}`;
+                    const div = document.createElement('div');
+                    div.className = 'photo-item';
+                    div.innerHTML = `
+                        <img src="${photosData[i]}" alt="${legenda}">
+                        <div class="photo-caption">${legenda}</div>
+                    `;
+                    outFotos.appendChild(div);
+                }
+            }
+
+            // Timestamp de Geração
+            const dataHoraAtual = new Date().toLocaleString('pt-BR');
+            document.getElementById('pdf-footer-timestamp').innerText = `Gerado automaticamente via Sistema de Passagem de Plantão Cetrel - ${dataHoraAtual}`;
+        }
+
+        // --- Geração do PDF ---
+        function gerarPDF() {
+            const element = document.getElementById('pdf-preview-container');
+            const baseStr = document.getElementById('base').value.replace('Estação ', '').replace('Equipe de ', '');
+            const dataStr = document.getElementById('dataFim').value;
+            const filename = `Plantao_${baseStr}_${dataStr}.pdf`;
+
+            // Configurações do html2pdf
+            const opt = {
+                margin:       10,
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Muda visualmente o botão para mostrar que está carregando
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Gerando PDF...';
+            btn.disabled = true;
+
+            // Gera o PDF
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("Erro ao gerar PDF:", err);
+                alert("Ocorreu um erro ao gerar o PDF.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
