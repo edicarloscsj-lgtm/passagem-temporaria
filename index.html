@@ -345,7 +345,7 @@
 
                 <!-- 8. Fotos -->
                 <div class="form-section">
-                    <h2 class="section-title">8. Evidências Fotográficas (Máx 6)</h2>
+                    <h2 class="section-title">8. Evidências Fotográficas</h2>
                     <p class="text-xs text-gray-500 mb-5">Selecione imagens correspondentes às atividades e adicione legendas descritivas detalhadas.</p>
                     
                     <div id="fotos-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -353,10 +353,15 @@
                     </div>
                 </div>
 
-                <!-- Botão de Ação Primária -->
-                <button type="submit" class="w-full bg-gradient-to-r from-emerald-700 to-emerald-800 text-white font-extrabold text-lg py-4 rounded-xl shadow-lg hover:from-emerald-800 hover:to-emerald-950 active:transform active:scale-[0.99] transition-all flex items-center justify-center gap-2">
-                    Visualizar Relatório de Passagem
-                </button>
+                <!-- Botão de Ação Primária e Limpeza -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="submit" class="flex-[3] bg-gradient-to-r from-emerald-700 to-emerald-800 text-white font-extrabold text-lg py-4 rounded-xl shadow-lg hover:from-emerald-800 hover:to-emerald-950 active:transform active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+                        Visualizar Relatório de Passagem
+                    </button>
+                    <button type="button" onclick="limparRascunho()" class="flex-[1] bg-slate-200 text-slate-700 font-bold text-sm py-4 rounded-xl shadow-sm hover:bg-slate-300 active:bg-slate-400 transition-all flex items-center justify-center gap-2" title="Apaga todos os dados salvos temporariamente">
+                        Limpar Dados
+                    </button>
+                </div>
             </form>
         </div>
 
@@ -499,11 +504,16 @@
     <script>
         let stationCount = 0;
         let photosData = {}; // Guarda imagens convertidas em base64
+        let blockAutoSave = false; // Evita salvar enquanto carrega o rascunho
 
         // Inicialização do documento
         document.addEventListener('DOMContentLoaded', () => {
-            // Inicializa sem nenhuma estação obrigatória por padrão
             gerarCamposDeFotos();
+            carregarRascunho(); // Tenta recuperar dados salvos
+            
+            // Adiciona o gatilho de salvamento automático em todo o formulário
+            document.getElementById('plantao-form').addEventListener('input', salvarRascunho);
+            document.getElementById('plantao-form').addEventListener('change', salvarRascunho);
         });
 
         // Função de notificações Toast elegante (Substituição de alert)
@@ -558,6 +568,7 @@
                 </div>
             `;
             container.appendChild(div);
+            salvarRascunho(); // Salva o estado ao adicionar
         }
 
         function removerEstacao(id) {
@@ -565,6 +576,7 @@
             if(el) {
                 el.remove();
                 showToast("Estação removida do checklist.");
+                salvarRascunho(); // Salva o estado ao remover
             }
         }
 
@@ -601,6 +613,7 @@
             containerPreview.classList.add('hidden');
             legendaInput.classList.add('hidden');
             legendaInput.value = '';
+            salvarRascunho(); // Salva alteração de foto
             showToast(`Evidência ${index} removida com sucesso.`);
         }
 
@@ -616,11 +629,137 @@
                     previewImg.src = e.target.result;
                     containerPreview.classList.remove('hidden');
                     legendaInput.classList.remove('hidden');
+                    salvarRascunho(); // Salva alteração de foto
                     showToast(`Evidência ${index} carregada com sucesso.`);
                 }
                 reader.readAsDataURL(input.files[0]);
             } else {
                 limparImagem(index);
+            }
+        }
+
+        // --- Lógica de Auto-Salvamento (LocalStorage) ---
+        function salvarRascunho() {
+            if (blockAutoSave) return;
+            
+            const estacoes = [];
+            document.querySelectorAll('#estacoes-container > div').forEach(div => {
+                estacoes.push({
+                    nome: div.querySelector('.estacao-nome').value,
+                    status: div.querySelector('.estacao-status').value
+                });
+            });
+
+            const legendas = {};
+            for(let i=1; i<=6; i++) {
+                legendas[i] = document.getElementById(`foto-legenda-${i}`)?.value || '';
+            }
+
+            const rascunho = {
+                dataInicio: document.getElementById('dataInicio').value,
+                dataFim: document.getElementById('dataFim').value,
+                base: document.getElementById('base').value,
+                equipeSai: document.getElementById('equipeSai').value,
+                equipeEntra: document.getElementById('equipeEntra').value,
+                condutor: document.getElementById('condutor').value,
+                equipagem: document.getElementById('equipagem').value,
+                pendenciasGerais: document.getElementById('pendenciasGerais').value,
+                montanaKmEntrada: document.getElementById('montanaKmEntrada').value,
+                montanaKmSaida: document.getElementById('montanaKmSaida').value,
+                montanaStatus: document.getElementById('montanaStatus').value,
+                vciKmEntrada: document.getElementById('vciKmEntrada').value,
+                vciKmSaida: document.getElementById('vciKmSaida').value,
+                vciAvarias: document.getElementById('vciAvarias').value,
+                vciReparos: document.getElementById('vciReparos').value,
+                vciPendencias: document.getElementById('vciPendencias').value,
+                obsGerais: document.getElementById('obsGerais').value,
+                estacoes: estacoes,
+                legendas: legendas
+            };
+
+            try {
+                // Tenta salvar com as fotos embutidas
+                rascunho.photosData = photosData;
+                localStorage.setItem('plantaoCetrelDraft', JSON.stringify(rascunho));
+            } catch (e) {
+                // Se o navegador barrar o salvamento por imagens muito grandes (geralmente > 5MB), salva o texto omitindo as fotos
+                delete rascunho.photosData;
+                localStorage.setItem('plantaoCetrelDraft', JSON.stringify(rascunho));
+                console.warn("Limite de memória nativo atingido. Os textos foram salvos, mas as imagens são muito pesadas para o rascunho automático.");
+            }
+        }
+
+        function carregarRascunho() {
+            const salvo = localStorage.getItem('plantaoCetrelDraft');
+            if (!salvo) return;
+
+            blockAutoSave = true; // Impede que o sistema fique salvando enquanto ainda está restaurando os dados
+            
+            try {
+                const rascunho = JSON.parse(salvo);
+                
+                // Preenche campos de texto
+                document.getElementById('dataInicio').value = rascunho.dataInicio || '';
+                document.getElementById('dataFim').value = rascunho.dataFim || '';
+                document.getElementById('base').value = rascunho.base || '';
+                document.getElementById('equipeSai').value = rascunho.equipeSai || '';
+                document.getElementById('equipeEntra').value = rascunho.equipeEntra || '';
+                document.getElementById('condutor').value = rascunho.condutor || '';
+                document.getElementById('equipagem').value = rascunho.equipagem || '';
+                document.getElementById('pendenciasGerais').value = rascunho.pendenciasGerais || '';
+                document.getElementById('montanaKmEntrada').value = rascunho.montanaKmEntrada || '';
+                document.getElementById('montanaKmSaida').value = rascunho.montanaKmSaida || '';
+                document.getElementById('montanaStatus').value = rascunho.montanaStatus || '';
+                document.getElementById('vciKmEntrada').value = rascunho.vciKmEntrada || '';
+                document.getElementById('vciKmSaida').value = rascunho.vciKmSaida || '';
+                document.getElementById('vciAvarias').value = rascunho.vciAvarias || '';
+                document.getElementById('vciReparos').value = rascunho.vciReparos || '';
+                document.getElementById('vciPendencias').value = rascunho.vciPendencias || '';
+                document.getElementById('obsGerais').value = rascunho.obsGerais || '';
+
+                // Recupera Estações
+                if (rascunho.estacoes && rascunho.estacoes.length > 0) {
+                    rascunho.estacoes.forEach(est => {
+                        adicionarEstacao();
+                        const divs = document.querySelectorAll('#estacoes-container > div');
+                        const lastDiv = divs[divs.length - 1];
+                        lastDiv.querySelector('.estacao-nome').value = est.nome || '';
+                        lastDiv.querySelector('.estacao-status').value = est.status || '';
+                    });
+                }
+
+                // Recupera Fotos e Legendas
+                if (rascunho.photosData) {
+                    photosData = rascunho.photosData;
+                }
+                for(let i=1; i<=6; i++) {
+                    const legendaInput = document.getElementById(`foto-legenda-${i}`);
+                    const containerPreview = document.getElementById(`container-preview-img-${i}`);
+                    const previewImg = document.getElementById(`foto-preview-${i}`);
+                    
+                    if (rascunho.legendas && rascunho.legendas[i]) {
+                        legendaInput.value = rascunho.legendas[i];
+                    }
+                    
+                    if (photosData[i]) {
+                        previewImg.src = photosData[i];
+                        containerPreview.classList.remove('hidden');
+                        legendaInput.classList.remove('hidden');
+                    }
+                }
+                
+                showToast("Buscamos seus dados que não foram salvos! Rascunho recuperado.");
+            } catch (e) {
+                console.error("Erro ao carregar rascunho:", e);
+            }
+            
+            blockAutoSave = false;
+        }
+
+        function limparRascunho() {
+            if(confirm("Tem certeza que deseja apagar todos os dados informados e começar um novo relatório do zero?")) {
+                localStorage.removeItem('plantaoCetrelDraft');
+                window.location.reload(); // Recarrega a página de forma limpa
             }
         }
 
